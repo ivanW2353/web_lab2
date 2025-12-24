@@ -1,1 +1,14 @@
+# dataset
 freebase_douban.gz
+data/
+
+# model checkpoints
+trained_model/
+
+# Python
+__pycache__/
+.venv/
+
+# IDE
+.vscode/
+.idea/
