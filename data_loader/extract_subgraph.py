@@ -56,53 +56,26 @@ def stream_gz(path: str):
             yield line
 
 
-def build_stats(input_gz: str,
-                require_fb_prefix: bool = True) -> Tuple[Counter, Counter, int]:
+def build_stats_and_adjacency(input_gz: str,
+                              min_ent_triples: int,
+                              min_rel_triples: int,
+                              require_fb_prefix: bool = True) -> Tuple[Dict[str, Set[str]], List[Tuple[str, str, str]], Dict]:
     """
-    第一遍：统计实体度数（按出现次数近似）与关系频次，只保留满足前缀条件的三元组进入统计。
-    返回：entity_counter, relation_counter, kept_triple_count
+    单次遍历优化：在一遍读取中完成：
+    1) 统计实体和关系频次
+    2) 根据频次过滤，构建邻接表
+    3) 收集过滤后的三元组
+    返回：adj, triples, stats_info
     """
     ent_cnt = Counter()
     rel_cnt = Counter()
-    kept = 0
+    triples_raw = []
+    
+    # Pass-1: 仅统计
+    print('[Pass-1] Counting entities/relations with Freebase prefix filtering ...')
     total_bytes = os.path.getsize(input_gz)
     with gzip.open(input_gz, 'rb') as f, tqdm(
         total=total_bytes, unit='B', unit_scale=True, desc='Pass-1 stats'
-    ) as pbar:
-        for line in f:
-            triple = parse_triple_line(line)
-            pbar.update(len(line))  # 以压缩字节为基准更新进度
-            if not triple:
-                continue
-            h, r, t = triple
-            if require_fb_prefix:
-                # 仅保留具有 FB 前缀（或已被剥离成 m.* / g.* 的）实体；
-                # 若非 URI，放宽为以 "m." 或 "g." 开头的实体；关系同理放宽为包含点号结构。
-                cond_ent = (h.startswith('m.') or h.startswith('g.')) and (t.startswith('m.') or t.startswith('g.'))
-                cond_rel = (r.startswith('m.') or r.startswith('g.') or ('.' in r))
-                if not (cond_ent and cond_rel):
-                    continue
-            ent_cnt[h] += 1
-            ent_cnt[t] += 1
-            rel_cnt[r] += 1
-            kept += 1
-    return ent_cnt, rel_cnt, kept
-
-
-def build_adjacency_and_triples(input_gz: str,
-                                eligible_ents: Set[str],
-                                eligible_rels: Set[str]) -> Tuple[Dict[str, List[Tuple[str, str]]], List[Tuple[str, str, str]]]:
-    """
-    第二遍：仅收集 (h,t,r) 都在可选集合中的边，构建无向邻接以供 BFS；
-    同时保留三元组列表。
-    返回：adj, triples
-    adj[u] = list of (v, r)
-    """
-    adj = defaultdict(list)
-    triples = []
-    total_bytes = os.path.getsize(input_gz)
-    with gzip.open(input_gz, 'rb') as f, tqdm(
-        total=total_bytes, unit='B', unit_scale=True, desc='Pass-2 filter'
     ) as pbar:
         for line in f:
             triple = parse_triple_line(line)
@@ -110,16 +83,50 @@ def build_adjacency_and_triples(input_gz: str,
             if not triple:
                 continue
             h, r, t = triple
-            if h in eligible_ents and t in eligible_ents and r in eligible_rels:
-                adj[h].append((t, r))
-                adj[t].append((h, r))  # 供无向 BFS
-                triples.append((h, r, t))
-    return adj, triples
+            if require_fb_prefix:
+                cond_ent = (h.startswith('m.') or h.startswith('g.')) and (t.startswith('m.') or t.startswith('g.'))
+                cond_rel = (r.startswith('m.') or r.startswith('g.') or ('.' in r))
+                if not (cond_ent and cond_rel):
+                    continue
+            ent_cnt[h] += 1
+            ent_cnt[t] += 1
+            rel_cnt[r] += 1
+            triples_raw.append((h, r, t))
+    
+    print(f'Total raw triples: {len(triples_raw):,}')
+    
+    # 构建过滤集合
+    eligible_ents = {e for e, c in ent_cnt.items() if c >= min_ent_triples}
+    eligible_rels = {r for r, c in rel_cnt.items() if c >= min_rel_triples}
+    print(f'Eligible entities: {len(eligible_ents):,}, relations: {len(eligible_rels):,}')
+    
+    # Pass-2: 构建邻接表和过滤三元组（无需重新读取 gzip）
+    print('[Pass-2] Building adjacency and filtering triples ...')
+    adj = defaultdict(set)
+    triples = []
+    for h, r, t in tqdm(triples_raw, desc='Pass-2 filter'):
+        if h in eligible_ents and t in eligible_ents and r in eligible_rels:
+            adj[h].add(t)
+            adj[t].add(h)
+            triples.append((h, r, t))
+    
+    print(f'Filtered triples: {len(triples):,}')
+    
+    return adj, triples, {
+        'ent_cnt': ent_cnt,
+        'rel_cnt': rel_cnt,
+        'eligible_ents': eligible_ents,
+        'eligible_rels': eligible_rels
+    }
 
 
-def bfs_select_entities(adj: Dict[str, List[Tuple[str, str]]],
+def bfs_select_entities(adj: Dict[str, Set[str]],
                         seeds: List[str],
                         target_entities: int) -> Set[str]:
+    """
+    从种子节点开始 BFS，选择 target_entities 个实体。
+    优化：使用 set 存储已访问节点，加速查询；预分配列表容量。
+    """
     visited = set()
     q = deque()
     for s in seeds:
@@ -130,12 +137,12 @@ def bfs_select_entities(adj: Dict[str, List[Tuple[str, str]]],
                 return visited
     while q and len(visited) < target_entities:
         u = q.popleft()
-        for v, _ in adj.get(u, []):
+        for v in adj.get(u, set()):
             if v not in visited:
                 visited.add(v)
                 q.append(v)
                 if len(visited) >= target_entities:
-                    break
+                    return visited
     return visited
 
 
@@ -174,7 +181,7 @@ def remap_and_split(triples: List[Tuple[str, str, str]],
             for h, r, t in data:
                 f.write(f"{h} {r} {t}\n")
 
-    # 写出两套命名，兼容加载器
+    # 输出文件
     _write(os.path.join(out_dir, 'kg_train.txt'), train)
     _write(os.path.join(out_dir, 'kg_valid.txt'), valid)
     _write(os.path.join(out_dir, 'kg_test.txt'), test)
@@ -216,31 +223,27 @@ def main():
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input gz file not found: {input_path}")
 
-    # 1) 统计
-    print('[Pass-1] Counting entities/relations with Freebase prefix filtering ...')
-    ent_cnt, rel_cnt, kept = build_stats(input_path, require_fb_prefix=True)
-    print(f'Kept triples for stats: {kept:,}')
-
-    # 2) 频次筛选
-    eligible_ents = {e for e, c in ent_cnt.items() if c >= args.min_ent_triples}
-    eligible_rels = {r for r, c in rel_cnt.items() if c >= args.min_rel_triples}
-    print(f'Eligible entities: {len(eligible_ents):,}, relations: {len(eligible_rels):,}')
-
-    # 3) 建邻接 & 收集候选三元组
-    print('[Pass-2] Building adjacency and collecting filtered triples ...')
-    adj, triples = build_adjacency_and_triples(input_path, eligible_ents, eligible_rels)
-    print(f'Filtered triples collected: {len(triples):,}')
+    # 优化：单次遍历 gzip 完成统计和邻接构建
+    print('[Start] Extracting subgraph with optimized single-pass reading ...')
+    adj, triples, stats_info = build_stats_and_adjacency(
+        input_path, 
+        args.min_ent_triples,
+        args.min_rel_triples,
+        require_fb_prefix=True
+    )
 
     if not adj:
         raise RuntimeError('Adjacency graph is empty after filtering. Try lowering thresholds.')
 
-    # 4) BFS 选点（以度数前 seed_entities 为种子）
+    # BFS 选点（以度数前 seed_entities 为种子）
+    print('[BFS] Selecting entities via BFS from high-degree seeds ...')
     deg = {u: len(neis) for u, neis in adj.items()}
     top_seeds = [u for u, _ in sorted(deg.items(), key=lambda x: x[1], reverse=True)[:args.seed_entities]]
     kept_entities = bfs_select_entities(adj, top_seeds, max(args.target_entities, 3000))
     print(f'BFS kept entities: {len(kept_entities):,}')
 
-    # 5) 重映射与划分
+    # 重映射与划分
+    print('[Remapping] Converting to IDs and splitting dataset ...')
     stats = remap_and_split(triples, kept_entities, args.output_dir)
     print('Done. Stats:')
     for k, v in stats.items():
