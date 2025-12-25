@@ -23,7 +23,7 @@ def save_model(model, model_dir, log_save_id, current_epoch, last_best_epoch=Non
     if last_best_epoch is not None and current_epoch != last_best_epoch:    # 之前有过best_model且当前这个epoch不是best_model的epoch，则要把last_best_model删除。
         old_model_state_file = os.path.join(model_dir, 'model{:d}_epoch{}.pth'.format(log_save_id, last_best_epoch))
         if os.path.exists(old_model_state_file):
-            os.system('rm {}'.format(old_model_state_file))
+            os.remove(old_model_state_file)
 
 
 def load_model(model, model_path):
