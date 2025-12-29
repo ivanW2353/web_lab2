@@ -210,7 +210,7 @@ def main():
     parser.add_argument('--output_dir', type=str, default=os.path.join('data', 'freebase'), help='Output directory')
     parser.add_argument('--min_ent_triples', type=int, default=10, help='Filter entities appearing in <X> triples at least')
     parser.add_argument('--min_rel_triples', type=int, default=10, help='Filter relations appearing in <X> triples at least')
-    parser.add_argument('--target_entities', type=int, default=3000, help='Target number of entities in subgraph (>=3000)')
+    parser.add_argument('--target_entities', type=int, default=5000, help='Target number of entities in subgraph (>=3000)')
     parser.add_argument('--seed_entities', type=int, default=50, help='Number of top-degree seeds to start BFS')
     parser.add_argument('--seed', type=int, default=2025, help='Random seed for shuffle/sampling')
     args = parser.parse_args()
