@@ -1,0 +1,143 @@
+exp001:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 32
+  relation_dim: 32
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp002:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransR
+  embed_dim: 32
+  relation_dim: 32
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp003:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp004:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransR
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp005:
+  target_entity: 5000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp006:
+  target_entity: 3000
+  kg_batch_size: 512
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp007:
+  target_entity: 3000
+  kg_batch_size: 4096
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp008:
+  target_entity: 3000
+  kg_batch_size: 8192
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp009:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 128
+  relation_dim: 128
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp010:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 256
+  relation_dim: 256
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-3
+
+exp011:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 0
+  learning_rate: 1e-3
+
+exp012:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-2
+  learning_rate: 1e-3
+
+exp013:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-5
+  learning_rate: 1e-3
+
+exp014:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 5e-4
+
+exp015:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 5e-3
+
+exp016:
+  target_entity: 3000
+  kg_batch_size: 2048
+  KG_embedding_type: TransE
+  embed_dim: 64
+  relation_dim: 64
+  kg_l2loss_lambda: 1e-4
+  learning_rate: 1e-2
